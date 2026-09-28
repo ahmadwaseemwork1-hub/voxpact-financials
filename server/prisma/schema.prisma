@@ -1,0 +1,235 @@
+// ---------------------------------------------------------------------------
+// Voxpact Financials — Prisma schema (PostgreSQL)
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// Prisma 7: the connection URL lives in prisma.config.ts (for the CLI) and is
+// handed to PrismaClient through the pg driver adapter (see src/lib/prisma.ts).
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  HOST
+  ADMIN
+  USER
+}
+
+enum ExpenseType {
+  DAILY
+  RECURRING
+}
+
+enum RevenueStatus {
+  PROJECTED
+  RECEIVED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
+// ---------------------------------------------------------------------------
+
+model User {
+  id                  String    @id @default(cuid())
+  username            String    @unique
+  passwordHash        String
+  role                Role      @default(USER)
+  email               String?
+  fullName            String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  lastLogin           DateTime?
+  isActive            Boolean   @default(true)
+  mustChangePassword  Boolean   @default(false)
+  failedLoginAttempts Int       @default(0)
+  createdById         String?
+
+  createdBy    User?          @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdUsers User[]         @relation("UserCreatedBy")
+  expenses     Expense[]
+  revenues     Revenue[]
+  auditLogs    AuditLog[]
+  notifications Notification[]
+
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+model Expense {
+  id            String      @id @default(cuid())
+  type          ExpenseType @default(DAILY)
+  name          String
+  description   String?
+  category      String
+  amount        Decimal     @db.Decimal(14, 2)
+  date          DateTime
+  dueDate       DateTime?
+  paymentMethod String?
+  receiptUrl    String?
+  isPaid        Boolean     @default(true)
+  isRecurring   Boolean     @default(false)
+  /// Links an auto-generated expense back to its origin (salary run, payout, recurring template)
+  sourceType    String?
+  sourceId      String?
+  addedById     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  addedBy User? @relation(fields: [addedById], references: [id], onDelete: SetNull)
+
+  @@index([type, date])
+  @@index([category])
+  @@index([date])
+  @@index([sourceType, sourceId])
+  @@map("expenses")
+}
+
+model Revenue {
+  id            String        @id @default(cuid())
+  clientName    String
+  source        String?
+  description   String?
+  amount        Decimal       @db.Decimal(14, 2)
+  projectedDate DateTime
+  receivedDate  DateTime?
+  receivedAmount Decimal?     @db.Decimal(14, 2)
+  status        RevenueStatus @default(PROJECTED)
+  addedById     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  addedBy User? @relation(fields: [addedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([projectedDate])
+  @@index([receivedDate])
+  @@map("revenues")
+}
+
+model Partner {
+  id            String        @id @default(cuid())
+  name          String
+  email         String?
+  percentage    Decimal       @db.Decimal(6, 3)
+  paymentStatus PaymentStatus @default(PENDING)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("partners")
+}
+
+model Employee {
+  id            String   @id @default(cuid())
+  name          String
+  role          String
+  email         String?
+  monthlySalary Decimal  @default(0) @db.Decimal(14, 2)
+  bonus         Decimal  @default(0) @db.Decimal(14, 2)
+  isSpecial     Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  joinedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  projects SpecialEmployeeProject[]
+
+  @@index([isSpecial, isActive])
+  @@map("employees")
+}
+
+model SpecialEmployeeProject {
+  id           String   @id @default(cuid())
+  employeeId   String
+  projectName  String
+  totalAmount  Decimal  @db.Decimal(14, 2)
+  percentage   Decimal  @db.Decimal(6, 3)
+  payoutAmount Decimal  @db.Decimal(14, 2)
+  date         DateTime
+  isPaid       Boolean  @default(false)
+  expenseId    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([date])
+  @@map("special_employee_projects")
+}
+
+model DailyBudget {
+  id           String   @id @default(cuid())
+  date         DateTime @unique @db.Date
+  budgetAmount Decimal  @db.Decimal(14, 2)
+  spentAmount  Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("daily_budgets")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  username   String
+  role       String?
+  action     String
+  entityType String
+  entityId   String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  timestamp  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([timestamp])
+  @@index([entityType])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  title     String
+  message   String
+  level     String   @default("info")
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  username  String
+  ipAddress String?
+  success   Boolean
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([username, createdAt])
+  @@map("login_attempts")
+}

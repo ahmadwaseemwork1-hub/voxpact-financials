@@ -1,0 +1,31 @@
+{
+  "name": "voxpact-financials",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Voxpact Financials \u2014 premium financial management portal",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "install:all": "npm install",
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm --workspace server run dev",
+    "dev:web": "npm --workspace web run dev",
+    "build": "npm --workspace server run build && npm --workspace web run build",
+    "start": "npm --workspace server run start",
+    "db:generate": "npm --workspace server run prisma:generate",
+    "db:migrate": "npm --workspace server run prisma:migrate",
+    "db:push": "npm --workspace server run prisma:push",
+    "db:seed": "npm --workspace server run seed",
+    "db:studio": "npm --workspace server run prisma:studio",
+    "setup": "npm install && npm run db:generate && npm run db:push && npm run db:seed",
+    "typecheck": "npm --workspace server run typecheck && npm --workspace web run typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
