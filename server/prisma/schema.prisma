@@ -92,6 +92,18 @@ model Expense {
   @@map("expenses")
 }
 
+/// Receipt file contents, stored in the database so they survive redeploys on
+/// hosts without a persistent disk. `id` is the unguessable name in receiptUrl.
+model ReceiptFile {
+  id        String   @id
+  mimeType  String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@map("receipt_files")
+}
+
 model Revenue {
   id            String        @id @default(cuid())
   clientName    String

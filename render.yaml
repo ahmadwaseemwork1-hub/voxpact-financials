@@ -1,15 +1,9 @@
-# Render Blueprint — one web service (API + built SPA on one origin) and a
-# managed PostgreSQL. Deploy: Render dashboard → New → Blueprint → pick this repo.
+# Render Blueprint — one web service (API + built SPA on one origin) using an
+# external PostgreSQL. Deploy: Render dashboard → New → Blueprint → pick this repo.
 #
 # On every deploy the start command syncs the schema and runs the seed. Both are
 # idempotent: the seed never overwrites existing users, passwords or settings,
 # and only adds demo records to an empty database.
-
-databases:
-  - name: voxpact-db
-    plan: free
-    databaseName: voxpact_financials
-    user: voxpact
 
 services:
   - type: web
@@ -25,10 +19,10 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
+      # PostgreSQL connection string (e.g. Neon's free tier, which doesn't
+      # expire). Render asks for it when you create the Blueprint.
       - key: DATABASE_URL
-        fromDatabase:
-          name: voxpact-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN

@@ -326,9 +326,11 @@ Worth knowing before you trust the numbers:
 
 ### Render (one click, via `render.yaml`)
 
-Render dashboard → **New → Blueprint** → pick this repo. It creates a PostgreSQL database and one web service that serves both the API and the SPA. When prompted, enter `SEED_HOST_PASSWORD` and `SEED_ADMIN_PASSWORD` (8+ chars, upper, number, symbol). Every deploy runs `db:push` and the idempotent seed before starting. Set `SEED_DEMO_DATA=true` if you want sample records in an empty database.
+1. Create a PostgreSQL database — [Neon](https://neon.tech)'s free tier doesn't expire. Copy its **direct** (non-pooled) connection string.
+2. Render dashboard → **New → Blueprint** → pick this repo. It creates one web service that serves both the API and the SPA.
+3. When prompted, enter `DATABASE_URL` (the Neon string), `SEED_HOST_PASSWORD` and `SEED_ADMIN_PASSWORD` (8+ chars, upper, number, symbol).
 
-Free-plan caveats: the service sleeps after 15 idle minutes (the first request takes ~1 min), the free database expires after 30 days unless upgraded, and uploaded receipts are lost on redeploy unless you add a persistent disk (paid) mounted at `server/uploads`.
+Every deploy runs `db:push` and the idempotent seed before starting. Set `SEED_DEMO_DATA=true` if you want sample records in an empty database. Receipts are stored in PostgreSQL (`receipt_files`), so no persistent disk is needed. On the free plan the service sleeps after 15 idle minutes, and the first request after that takes about a minute.
 
 ### Option A — one service (the API serves the SPA)
 
@@ -346,7 +348,7 @@ npm start
 | `web/` | Vercel / Netlify / Cloudflare Pages | build `npm run build`, output `dist`, set `VITE_API_URL` |
 | `server/` | Railway / Render / Fly / a VPS | set every variable from `.env.example`, run `prisma migrate deploy` on release |
 | Database | managed PostgreSQL | Neon, Supabase, RDS, Railway |
-| Receipts | a persistent volume, or swap `middleware/upload.ts` for S3 | see the gap list below |
+| Receipts | stored in PostgreSQL | nothing extra to provision |
 
 **Production checklist**
 
@@ -357,7 +359,6 @@ npm start
 - [ ] Seeded passwords changed, `SEED_*` removed from the server env
 - [ ] `prisma migrate deploy` runs on every release
 - [ ] Automated database backups on
-- [ ] Uploads point at durable storage, not an ephemeral container disk
 
 ---
 
@@ -390,7 +391,7 @@ Two real bugs surfaced this way and are fixed: the CORS layer returned 500 for i
 
 Straight, so nothing surprises you later:
 
-- **Receipt uploads go to local disk.** On an ephemeral host (Railway, Render free tier, Fly without a volume) they vanish on redeploy. Move `middleware/upload.ts` to S3 before relying on them as records.
+- **Receipts are stored in PostgreSQL**, which keeps them durable and backed up with everything else, but a large volume of scans will eat into a small free database quota (10 MB cap per file). Move `middleware/upload.ts` to object storage (S3, R2) if that becomes a problem.
 - **No automated test suite in the repo.** The verification above was run against this build; it isn't wired into CI yet.
 - **Recurring expenses roll over on a button press**, not a cron job.
 - **Notifications are derived live** from budget breaches, overdue invoices and unpaid bills. The `Notification` table exists but nothing writes to it yet.

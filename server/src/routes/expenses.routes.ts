@@ -6,7 +6,7 @@ import { authenticate, requireManager } from '../middleware/auth';
 import { audit, diff } from '../middleware/audit';
 import { validateBody } from '../middleware/validate';
 import { zBool, zNullableDate, zPositiveMoney, zText } from '../utils/zod';
-import { receiptUpload, receiptPublicUrl, deleteUpload } from '../middleware/upload';
+import { receiptUpload, saveReceipt, deleteUpload } from '../middleware/upload';
 import { toCsv, sendCsv } from '../utils/csv';
 import {
   parseRange,
@@ -274,7 +274,7 @@ router.post(
         paymentMethod: body.paymentMethod || null,
         isPaid: body.isPaid ?? true,
         isRecurring: body.isRecurring ?? body.type === 'RECURRING',
-        receiptUrl: req.file ? receiptPublicUrl(req.file.filename) : null,
+        receiptUrl: req.file ? await saveReceipt(req.file) : null,
         addedById: req.user!.id,
       },
       include: includeUser,
@@ -310,7 +310,7 @@ router.patch(
     }
     if (req.file) {
       deleteUpload(existing.receiptUrl);
-      receiptUrl = receiptPublicUrl(req.file.filename);
+      receiptUrl = await saveReceipt(req.file);
     }
 
     const data: Prisma.ExpenseUpdateInput = {

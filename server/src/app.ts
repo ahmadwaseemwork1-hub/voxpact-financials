@@ -10,6 +10,8 @@ import { env } from './config/env';
 import { apiLimiter } from './middleware/rateLimit';
 import { sanitizeBody } from './middleware/validate';
 import { errorHandler, notFoundHandler } from './middleware/error';
+import { serveReceipt } from './middleware/upload';
+import { asyncHandler } from './utils/http';
 
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/users.routes';
@@ -63,8 +65,10 @@ export function createApp() {
   app.use(sanitizeBody);
   if (!env.isProd) app.use(morgan('dev'));
 
-  // Uploaded receipts
+  // Uploaded receipts: stored in the database; the static dir serves files
+  // written to disk by older builds
   fs.mkdirSync(env.UPLOAD_DIR, { recursive: true });
+  app.get('/uploads/:file', asyncHandler(serveReceipt));
   app.use('/uploads', express.static(env.UPLOAD_DIR, { maxAge: '7d' }));
 
   app.get('/api/health', (_req, res) =>

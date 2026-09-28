@@ -38,6 +38,11 @@ CREATE TABLE "expenses" (
 CREATE INDEX ON "expenses"("type","date"); CREATE INDEX ON "expenses"("category");
 CREATE INDEX ON "expenses"("date"); CREATE INDEX ON "expenses"("sourceType","sourceId");
 
+CREATE TABLE "receipt_files" (
+  "id" TEXT PRIMARY KEY, "mimeType" TEXT NOT NULL, "size" INTEGER NOT NULL, "data" BYTEA NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE "revenues" (
   "id" TEXT PRIMARY KEY, "clientName" TEXT NOT NULL, "source" TEXT, "description" TEXT,
   "amount" DECIMAL(14,2) NOT NULL, "projectedDate" TIMESTAMP(3) NOT NULL, "receivedDate" TIMESTAMP(3),
