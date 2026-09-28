@@ -1,0 +1,54 @@
+# Render Blueprint — one web service (API + built SPA on one origin) and a
+# managed PostgreSQL. Deploy: Render dashboard → New → Blueprint → pick this repo.
+#
+# On every deploy the start command syncs the schema and runs the seed. Both are
+# idempotent: the seed never overwrites existing users, passwords or settings,
+# and only adds demo records to an empty database.
+
+databases:
+  - name: voxpact-db
+    plan: free
+    databaseName: voxpact_financials
+    user: voxpact
+
+services:
+  - type: web
+    name: voxpact-financials
+    runtime: node
+    plan: free
+    # devDependencies are needed to build (tsc, vite) and at start (prisma CLI, tsx)
+    buildCommand: npm ci --include=dev && npm run db:generate && npm run build
+    startCommand: npm run db:push && npm run db:seed && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: voxpact-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 24h
+      - key: CURRENCY
+        value: USD
+      # Seed accounts — Render asks for these when you create the Blueprint.
+      # Both must change their password at first sign-in.
+      - key: SEED_HOST_USERNAME
+        value: ahmad.waseem
+      - key: SEED_HOST_EMAIL
+        value: ahmad.waseem.work1@gmail.com
+      - key: SEED_HOST_PASSWORD
+        sync: false
+      - key: SEED_ADMIN_USERNAME
+        value: voxpactadmin
+      - key: SEED_ADMIN_EMAIL
+        value: admin@voxpact.com
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+      # Set to "true" to fill an empty database with sample records
+      - key: SEED_DEMO_DATA
+        value: "false"

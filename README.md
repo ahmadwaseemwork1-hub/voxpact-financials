@@ -324,6 +324,12 @@ Worth knowing before you trust the numbers:
 
 ## 11. Deploying
 
+### Render (one click, via `render.yaml`)
+
+Render dashboard → **New → Blueprint** → pick this repo. It creates a PostgreSQL database and one web service that serves both the API and the SPA. When prompted, enter `SEED_HOST_PASSWORD` and `SEED_ADMIN_PASSWORD` (8+ chars, upper, number, symbol). Every deploy runs `db:push` and the idempotent seed before starting. Set `SEED_DEMO_DATA=true` if you want sample records in an empty database.
+
+Free-plan caveats: the service sleeps after 15 idle minutes (the first request takes ~1 min), the free database expires after 30 days unless upgraded, and uploaded receipts are lost on redeploy unless you add a persistent disk (paid) mounted at `server/uploads`.
+
 ### Option A — one service (the API serves the SPA)
 
 ```bash
